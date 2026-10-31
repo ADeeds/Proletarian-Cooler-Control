@@ -179,10 +179,9 @@ class CoolerBleManager(private val context: Context) {
         }
 
         override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
-            android.util.Log.d("CoolerBle", "Descriptor write status: $status")
-            if (status == BluetoothGatt.GATT_SUCCESS) {
-                _isReady.value = true
-            }
+            if (descriptor.uuid != CCCD_UUID) return
+            android.util.Log.d("CoolerBle", "CCCD write status: $status")
+            _isReady.value = status == BluetoothGatt.GATT_SUCCESS
         }
     }
 
@@ -230,13 +229,18 @@ class CoolerBleManager(private val context: Context) {
     private fun enableNotifications(gatt: BluetoothGatt) {
         val service = gatt.getService(CoolerProtocol.SERVICE_UUID) ?: return
         val characteristic = service.getCharacteristic(CoolerProtocol.NOTIFY_CHAR_UUID) ?: return
-        gatt.setCharacteristicNotification(characteristic, true)
+        if (!gatt.setCharacteristicNotification(characteristic, true)) {
+            Log.e("CoolerBle", "Failed to enable notifications for ${characteristic.uuid}")
+            return
+        }
         val descriptor = characteristic.getDescriptor(CCCD_UUID)
         if (descriptor == null) {
             Log.e("CoolerBle", "CCCD descriptor missing for ${characteristic.uuid}")
             return
         }
         descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
-        gatt.writeDescriptor(descriptor)
+        if (!gatt.writeDescriptor(descriptor)) {
+            Log.e("CoolerBle", "Failed to write CCCD for ${characteristic.uuid}")
+        }
     }
 }
