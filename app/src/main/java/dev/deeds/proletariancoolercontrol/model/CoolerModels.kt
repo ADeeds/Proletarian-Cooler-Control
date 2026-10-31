@@ -54,15 +54,12 @@ enum class OperatingMode(val value: Int, val displayName: String) {
 }
 
 enum class ZoneEnable(val statusValue: Int, val displayName: String) {
-    LEFT_ONLY(1, "Left Only"), RIGHT_ONLY(2, "Right Only"), BOTH(3, "Both");
+    BOTH_OFF(0, "Both Off"),
+    LEFT_ONLY(1, "Left Only"),
+    RIGHT_ONLY(2, "Right Only"),
+    BOTH(3, "Both");
     companion object {
-        fun fromInt(v: Int): ZoneEnable {
-            val found = entries.find { it.statusValue == v }
-            if (found == null) {
-                android.util.Log.w("CoolerModels", "Unknown ZoneEnable status value received: $v")
-            }
-            return found ?: BOTH
-        }
+        fun fromInt(v: Int): ZoneEnable? = entries.find { it.statusValue == v }
     }
 }
 

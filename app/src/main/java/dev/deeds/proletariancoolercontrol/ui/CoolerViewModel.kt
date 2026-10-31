@@ -110,7 +110,9 @@ class CoolerViewModel(application: Application) : AndroidViewModel(application) 
                 CoolerProtocol.DP_TEMP_UNIT -> current = current.copy(tempUnit = TemperatureUnit.fromInt(value))
                 CoolerProtocol.DP_BATTERY_PROT -> current = current.copy(batteryProtection = BatteryProtection.fromInt(value))
                 CoolerProtocol.DP_OPERATING_MODE -> current = current.copy(operatingMode = OperatingMode.fromInt(value))
-                CoolerProtocol.DP_ZONE_ENABLE -> current = current.copy(zoneEnable = ZoneEnable.fromInt(value))
+                CoolerProtocol.DP_ZONE_ENABLE -> ZoneEnable.fromInt(value)?.let {
+                    current = current.copy(zoneEnable = it)
+                }
                 CoolerProtocol.DP_KEY_SOUND -> current = current.copy(keySoundMuted = value == 1)
                 CoolerProtocol.DP_SCREEN_TIMEOUT -> current = current.copy(screenTimeout = ScreenTimeout.fromInt(value))
             }
@@ -139,14 +141,7 @@ class CoolerViewModel(application: Application) : AndroidViewModel(application) 
     fun setTempUnit(unit: TemperatureUnit) = sendDp(CoolerProtocol.DP_TEMP_UNIT, CoolerProtocol.TYPE_ENUM, unit.value)
     fun setBatteryProtection(prot: BatteryProtection) = sendDp(CoolerProtocol.DP_BATTERY_PROT, CoolerProtocol.TYPE_ENUM, prot.value)
     fun setOperatingMode(mode: OperatingMode) = sendDp(CoolerProtocol.DP_OPERATING_MODE, CoolerProtocol.TYPE_ENUM, mode.value)
-    fun setZoneEnable(enable: ZoneEnable) {
-        val commandValue = when (enable) {
-            ZoneEnable.LEFT_ONLY -> 2
-            ZoneEnable.BOTH -> 1
-            ZoneEnable.RIGHT_ONLY -> 0
-        }
-        sendDp(CoolerProtocol.DP_ZONE_ENABLE, CoolerProtocol.TYPE_ENUM, commandValue)
-    }
+    fun setZoneEnable(enable: ZoneEnable) = sendDp(CoolerProtocol.DP_ZONE_ENABLE, CoolerProtocol.TYPE_ENUM, enable.statusValue)
     fun setKeySoundMuted(muted: Boolean) = sendDp(CoolerProtocol.DP_KEY_SOUND, CoolerProtocol.TYPE_BOOL, if (muted) 1 else 0)
     fun setScreenTimeout(timeout: ScreenTimeout) = sendDp(CoolerProtocol.DP_SCREEN_TIMEOUT, CoolerProtocol.TYPE_ENUM, timeout.value)
 
