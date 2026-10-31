@@ -32,6 +32,10 @@ import java.util.*
 
 @SuppressLint("MissingPermission")
 class CoolerBleManager(private val context: Context) {
+    companion object {
+        private val CCCD_UUID = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb")
+    }
+
     private val bluetoothManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val adapter = bluetoothManager.adapter
     private var gatt: BluetoothGatt? = null
@@ -227,7 +231,11 @@ class CoolerBleManager(private val context: Context) {
         val service = gatt.getService(CoolerProtocol.SERVICE_UUID) ?: return
         val characteristic = service.getCharacteristic(CoolerProtocol.NOTIFY_CHAR_UUID) ?: return
         gatt.setCharacteristicNotification(characteristic, true)
-        val descriptor = characteristic.getDescriptor(UUID.fromString("00002902-0000-1000-8000-00805f9b34fb"))
+        val descriptor = characteristic.getDescriptor(CCCD_UUID)
+        if (descriptor == null) {
+            Log.e("CoolerBle", "CCCD descriptor missing for ${characteristic.uuid}")
+            return
+        }
         descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
         gatt.writeDescriptor(descriptor)
     }
