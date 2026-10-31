@@ -82,10 +82,17 @@ class CoolerBleManager(private val context: Context) {
         }
     }
 
-    fun connect(device: BluetoothDevice) {
+    fun connect(device: BluetoothDevice): Boolean {
         stopScan()
-        android.util.Log.d("CoolerBle", "Connecting to ${device.address}")
-        gatt = device.connectGatt(context, false, gattCallback)
+        Log.d("CoolerBle", "Connecting to ${device.address}")
+        val client = device.connectGatt(context, false, gattCallback)
+        if (client == null) {
+            Log.e("CoolerBle", "connectGatt returned null for ${device.address}")
+            _isReady.value = false
+            return false
+        }
+        gatt = client
+        return true
     }
 
     fun getConnectedDevice(): BluetoothDevice? = gatt?.device
@@ -180,8 +187,11 @@ class CoolerBleManager(private val context: Context) {
 
         override fun onDescriptorWrite(gatt: BluetoothGatt, descriptor: BluetoothGattDescriptor, status: Int) {
             if (descriptor.uuid != CCCD_UUID) return
-            android.util.Log.d("CoolerBle", "CCCD write status: $status")
+            Log.d("CoolerBle", "CCCD write status: $status")
             _isReady.value = status == BluetoothGatt.GATT_SUCCESS
+            if (status != BluetoothGatt.GATT_SUCCESS) {
+                gatt.disconnect()
+            }
         }
     }
 
@@ -227,20 +237,31 @@ class CoolerBleManager(private val context: Context) {
     }
 
     private fun enableNotifications(gatt: BluetoothGatt) {
-        val service = gatt.getService(CoolerProtocol.SERVICE_UUID) ?: return
-        val characteristic = service.getCharacteristic(CoolerProtocol.NOTIFY_CHAR_UUID) ?: return
+        val service = gatt.getService(CoolerProtocol.SERVICE_UUID) ?: run {
+            Log.e("CoolerBle", "Service ${CoolerProtocol.SERVICE_UUID} missing")
+            gatt.disconnect()
+            return
+        }
+        val characteristic = service.getCharacteristic(CoolerProtocol.NOTIFY_CHAR_UUID) ?: run {
+            Log.e("CoolerBle", "Notify characteristic missing")
+            gatt.disconnect()
+            return
+        }
         if (!gatt.setCharacteristicNotification(characteristic, true)) {
             Log.e("CoolerBle", "Failed to enable notifications for ${characteristic.uuid}")
+            gatt.disconnect()
             return
         }
         val descriptor = characteristic.getDescriptor(CCCD_UUID)
         if (descriptor == null) {
             Log.e("CoolerBle", "CCCD descriptor missing for ${characteristic.uuid}")
+            gatt.disconnect()
             return
         }
         descriptor.value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE
         if (!gatt.writeDescriptor(descriptor)) {
             Log.e("CoolerBle", "Failed to write CCCD for ${characteristic.uuid}")
+            gatt.disconnect()
         }
     }
 }

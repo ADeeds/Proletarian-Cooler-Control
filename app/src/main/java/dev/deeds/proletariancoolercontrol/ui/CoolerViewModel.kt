@@ -123,7 +123,9 @@ class CoolerViewModel(application: Application) : AndroidViewModel(application) 
     fun connect(device: BluetoothDevice) {
         shouldAttemptAutoReconnect = false
         _isConnecting.value = true
-        bleManager.connect(device)
+        if (!bleManager.connect(device)) {
+            _isConnecting.value = false
+        }
     }
     fun disconnect() {
         userManuallyDisconnected = true
