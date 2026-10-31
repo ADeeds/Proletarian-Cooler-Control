@@ -12,5 +12,14 @@ I bought a fancy expensive cooler. It had an app, which seemed kinda superfluous
 
 ## Protocol
 
-The reverse-engineered BLE protocol — GATT UUIDs, framing, checksum, and the
-DP registry — is documented in [docs/protocol.md](docs/protocol.md).
+The reverse-engineered BLE protocol is documented in [docs/protocol.md](docs/protocol.md). Instead of using standard Bluetooth features like Gatt, it's a binary protocol similar to the [Tuya serial protocol](https://developer.tuya.com/en/docs/iot/tuya-cloud-universal-serial-port-access-protocol)
+
+## Web controller
+
+A browser-based alternative lives at [`web/index.html`](web/index.html). It uses
+Web Bluetooth, so it needs a Chromium-based browser and a secure context
+(HTTPS or localhost).
+
+It is a **less bulletproof alternative** to the Android app: it has fewer
+controls and guards, depends on browser BLE support, and is not built or
+versioned as a release artifact.

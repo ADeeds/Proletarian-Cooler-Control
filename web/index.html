@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cooler Web Controller</title>
+    <style>
+        :root {
+            --bg-color: #121212;
+            --card-bg: #1f2937;
+            --accent-color: #06b6d4;
+            --text-color: #f3f4f6;
+            --btn-blue: #2563eb;
+            --btn-red: #dc2626;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 450px;
+        }
+        h1 {
+            color: var(--accent-color);
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+        }
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        }
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .status-indicator {
+            font-weight: bold;
+        }
+        .connected { color: #10b981; }
+        .disconnected { color: #ef4444; }
+        button {
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+        }
+        .btn-connect { background-color: var(--btn-blue); }
+        .btn-disconnect { background-color: var(--btn-red); }
+        .btn-temp { background-color: #3b82f6; font-size: 1.2rem; width: 44px; height: 44px; }
+
+        .zones {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        .zone-card {
+            text-align: center;
+        }
+        .temp-display {
+            font-size: 2.2rem;
+            font-weight: bold;
+            margin: 8px 0;
+        }
+        .temp-controls {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 12px 0;
+        }
+        select {
+            background-color: #374151;
+            color: var(--text-color);
+            border: 1px solid #4b5563;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font: inherit;
+        }
+        /* Toggle Switch */
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #4b5563; transition: .3s; border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px;
+            background-color: white; transition: .3s; border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--accent-color); }
+        input:checked + .slider:before { transform: translateX(24px); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Cooler Web Controller</h1>
+
+    <!-- Status Card -->
+    <div class="card status-row">
+        <div>
+            <div id="statusText" class="status-indicator disconnected">DISCONNECTED</div>
+            <div style="font-size: 0.85rem; color: #9ca3af; margin-top: 4px;">Voltage: <span id="voltageText">--</span>V</div>
+        </div>
+        <button id="connectBtn" class="btn-connect" onclick="toggleConnect()">Connect</button>
+    </div>
+
+    <!-- Power -->
+    <div class="card">
+        <div class="setting-row">
+            <span>Power</span>
+            <label class="switch">
+                <input type="checkbox" id="powerToggle" onchange="sendPower(this.checked)">
+                <span class="slider"></span>
+            </label>
+        </div>
+    </div>
+
+    <!-- Dual Zones -->
+    <div class="zones">
+        <!-- Zone 1 -->
+        <div class="card zone-card">
+            <div style="color: var(--accent-color); font-size: 0.9rem;">Zone 1 (Left)</div>
+            <div id="z1Temp" class="temp-display">--°</div>
+            <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 8px;">Current: <span id="z1Current">--</span>°</div>
+            <div class="temp-controls">
+                <button class="btn-temp" onclick="adjustTemp(1, -1)">-</button>
+                <button class="btn-temp" onclick="adjustTemp(1, 1)">+</button>
+            </div>
+        </div>
+
+        <!-- Zone 2 -->
+        <div class="card zone-card">
+            <div style="color: var(--accent-color); font-size: 0.9rem;">Zone 2 (Right)</div>
+            <div id="z2Temp" class="temp-display">--°</div>
+            <div style="font-size: 0.75rem; color: #9ca3af; margin-bottom: 8px;">Current: <span id="z2Current">--</span>°</div>
+            <div class="temp-controls">
+                <button class="btn-temp" onclick="adjustTemp(2, -1)">-</button>
+                <button class="btn-temp" onclick="adjustTemp(2, 1)">+</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Settings -->
+    <div class="card">
+        <h3 style="margin-top: 0;">Controls &amp; Settings</h3>
+
+        <div class="setting-row">
+            <span>Temperature Unit (°F)</span>
+            <label class="switch">
+                <input type="checkbox" id="unitToggle" onchange="sendUnit(this.checked)" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="setting-row">
+            <span>Max Cooling Mode</span>
+            <label class="switch">
+                <input type="checkbox" id="modeToggle" onchange="sendMode(this.checked)" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="setting-row">
+            <span>Button Beep Sound</span>
+            <label class="switch">
+                <input type="checkbox" id="beepToggle" onchange="sendBeep(this.checked)" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <div class="setting-row">
+            <span>Battery Protection</span>
+            <select id="batteryProtection" onchange="sendBatteryProtection(this.value)">
+                <option value="0">Low</option>
+                <option value="1" selected>Medium</option>
+                <option value="2">High</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <span>Zones Enabled</span>
+            <select id="zoneEnable" onchange="sendZoneEnable(this.value)">
+                <option value="0">Both Off</option>
+                <option value="1">Left Only</option>
+                <option value="2">Right Only</option>
+                <option value="3" selected>Both</option>
+            </select>
+        </div>
+
+        <div class="setting-row">
+            <span>Screen Timeout</span>
+            <select id="screenTimeout" onchange="sendScreenTimeout(this.value)">
+                <option value="0">Always On</option>
+                <option value="1">1 Minute</option>
+                <option value="2">3 Minutes</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<script>
+    const SERVICE_UUID = "00001234-0000-1000-8000-00805f9b34fb";
+    const WRITE_UUID   = "00001235-0000-1000-8000-00805f9b34fb";
+    const NOTIFY_UUID  = "00001236-0000-1000-8000-00805f9b34fb";
+
+    let bleDevice = null;
+    let writeChar = null;
+    let z1Target = 40, z2Target = 40;
+
+    async function toggleConnect() {
+        if (bleDevice && bleDevice.gatt.connected) {
+            bleDevice.gatt.disconnect();
+            return;
+        }
+
+        try {
+            bleDevice = await navigator.bluetooth.requestDevice({
+                filters: [{ namePrefix: 'SYZ-' }],
+                optionalServices: [SERVICE_UUID]
+            });
+
+            bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+            const server = await bleDevice.gatt.connect();
+            const service = await server.getPrimaryService(SERVICE_UUID);
+            writeChar = await service.getCharacteristic(WRITE_UUID);
+            const notifyChar = await service.getCharacteristic(NOTIFY_UUID);
+
+            await notifyChar.startNotifications();
+            notifyChar.addEventListener('characteristicvaluechanged', handleTelemetry);
+
+            document.getElementById('statusText').innerText = 'CONNECTED';
+            document.getElementById('statusText').className = 'status-indicator connected';
+            document.getElementById('connectBtn').innerText = 'Disconnect';
+            document.getElementById('connectBtn').className = 'btn-disconnect';
+
+            sendQueryStatus();
+        } catch (e) {
+            console.error(e);
+            alert('Bluetooth Connect Failed: ' + e.message);
+        }
+    }
+
+    function onDisconnected() {
+        writeChar = null;
+        document.getElementById('statusText').innerText = 'DISCONNECTED';
+        document.getElementById('statusText').className = 'status-indicator disconnected';
+        document.getElementById('connectBtn').innerText = 'Connect';
+        document.getElementById('connectBtn').className = 'btn-connect';
+    }
+
+    function sendQueryStatus() {
+        if (!writeChar) return;
+        const frame = new Uint8Array([0x55, 0xAA, 0x01, 0x20, 0x00, 0x00, 0x20]);
+        writeChar.writeValueWithoutResponse(frame);
+    }
+
+    function sendFrame(cmdCode, dpId, dpType, valBytes) {
+        if (!writeChar) return;
+        const payloadLen = 4 + valBytes.length;
+        const frame = new Uint8Array(6 + payloadLen + 1);
+        frame[0] = 0x55; frame[1] = 0xAA; frame[2] = 0x01; frame[3] = cmdCode;
+        frame[4] = (payloadLen >> 8) & 0xFF; frame[5] = payloadLen & 0xFF;
+        frame[6] = dpId; frame[7] = dpType;
+        frame[8] = (valBytes.length >> 8) & 0xFF; frame[9] = valBytes.length & 0xFF;
+        for (let i = 0; i < valBytes.length; i++) frame[10 + i] = valBytes[i];
+
+        let sum = 0;
+        for (let i = 0; i < frame.length - 1; i++) sum += frame[i];
+        frame[frame.length - 1] = sum & 0xFF;
+
+        writeChar.writeValueWithoutResponse(frame);
+    }
+
+    function adjustTemp(zone, delta) {
+        if (zone === 1) {
+            z1Target += delta;
+            document.getElementById('z1Temp').innerText = z1Target + '°';
+            sendFrame(0x21, 0x03, 0x02, new Uint8Array([0, 0, 0, z1Target & 0xFF]));
+        } else {
+            z2Target += delta;
+            document.getElementById('z2Temp').innerText = z2Target + '°';
+            sendFrame(0x21, 0x05, 0x02, new Uint8Array([0, 0, 0, z2Target & 0xFF]));
+        }
+    }
+
+    function sendPower(on) { sendFrame(0x21, 0x01, 0x01, new Uint8Array([on ? 1 : 0])); }
+    function sendUnit(isF) { sendFrame(0x21, 0x06, 0x04, new Uint8Array([isF ? 1 : 0])); }
+    function sendMode(isMax) { sendFrame(0x21, 0x0B, 0x04, new Uint8Array([isMax ? 1 : 0])); }
+    function sendBeep(enable) { sendFrame(0x21, 0x14, 0x01, new Uint8Array([enable ? 0 : 1])); }
+    function sendBatteryProtection(value) { sendFrame(0x21, 0x07, 0x04, new Uint8Array([Number(value) & 0xFF])); }
+    function sendZoneEnable(value) { sendFrame(0x21, 0x12, 0x04, new Uint8Array([Number(value) & 0xFF])); }
+    function sendScreenTimeout(value) { sendFrame(0x21, 0x15, 0x04, new Uint8Array([Number(value) & 0xFF])); }
+
+    function handleTelemetry(event) {
+        const value = event.target.value;
+        const data = new Uint8Array(value.buffer, value.byteOffset, value.byteLength);
+        if (data.length < 7 || data[0] !== 0x55 || data[1] !== 0xAA) return;
+        let idx = 6;
+        while (idx + 4 <= data.length - 1) {
+            const dpId = data[idx];
+            const dpLen = (data[idx + 2] << 8) | data[idx + 3];
+            if (idx + 4 + dpLen > data.length - 1) break;
+            let val = 0;
+            for (let i = 0; i < dpLen; i++) val = (val << 8) | data[idx + 4 + i];
+            idx += 4 + dpLen;
+
+            if (dpId === 0x01) document.getElementById('powerToggle').checked = (val === 1);
+            if (dpId === 0x02) document.getElementById('z1Current').innerText = val;
+            if (dpId === 0x03) { z1Target = val; document.getElementById('z1Temp').innerText = val + '°'; }
+            if (dpId === 0x04) document.getElementById('z2Current').innerText = val;
+            if (dpId === 0x05) { z2Target = val; document.getElementById('z2Temp').innerText = val + '°'; }
+            if (dpId === 0x06) document.getElementById('unitToggle').checked = (val === 1);
+            if (dpId === 0x07) document.getElementById('batteryProtection').value = String(val);
+            if (dpId === 0x0B) document.getElementById('modeToggle').checked = (val === 1);
+            if (dpId === 0x12) document.getElementById('zoneEnable').value = String(val);
+            if (dpId === 0x14) document.getElementById('beepToggle').checked = (val === 0);
+            if (dpId === 0x15) document.getElementById('screenTimeout').value = String(val);
+            if (dpId === 0x16) document.getElementById('voltageText').innerText = (val / 10.0).toFixed(1);
+        }
+    }
+</script>
+
+</body>
+</html>
